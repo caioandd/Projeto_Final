@@ -65,5 +65,11 @@ double numero9[25] =
      0.0, 1.0, 1.0, 1.0, 0.0,
      0.0, 0.0, 0.0, 1.0, 0.0,
      0.0, 1.0, 1.0, 1.0, 0.0};
+double numero10[25] =
+    {0.0, 0.0, 0.0, 0.0, 0.0,  // nada
+     0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0};
 //Ponteiro para os vetores dos números
-double *nums[]={numero1, numero2, numero3, numero4, numero5, numero6, numero7, numero8, numero9};
+double *nums[]={numero0, numero1, numero2, numero3, numero4, numero5, numero6, numero7, numero8, numero9, numero10};
