@@ -158,6 +158,7 @@ void ssd1306_draw_char(ssd1306_t *ssd, char c, uint8_t x, uint8_t y)
 {
   uint16_t index = 0;
   char ver=c;
+  if (c == ' ') return; 
   if (c >= 'A' && c <= 'Z')
   {
     index = (c - 'A' + 11) * 8; // Para letras maiúsculas
@@ -191,10 +192,6 @@ void ssd1306_draw_string(ssd1306_t *ssd, const char *str, uint8_t x, uint8_t y)
     {
       x = 0;
       y += 8;
-    }
-    if (y + 8 <= ssd->height)
-    {
-      break;
     }
   }
 }
