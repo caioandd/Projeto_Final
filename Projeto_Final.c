@@ -44,6 +44,10 @@ int pos_prensa = 0; // Posição de prensa
 #define I2C_SCL 15 // GPIO SCL DO DISPLAY
 #define endereco 0x3C // ENDEREÇO DO DISPLAY
 ssd1306_t ssd; // Inicializa a estrutura do display
+char str[10]; // Armazena a string da posição da prensa
+char str1[10]; // Armazena a string da temperatura
+char str2[10]; // Armazena a string de ciclos completos
+int cont; // Contador de ciclos completos (CC)
 //============STATUS============
 volatile bool estado = false; // Status do modo automático
 volatile bool sensorFC = false; // Status de sensor de fim de curso
@@ -53,6 +57,7 @@ volatile int opc; // Etapa do modo automático
 // Funções primárias
 void init_gpios();
 void init_display();
+void info_display();
 uint32_t matrix_rgb(double r, double g, double b);
 void padrao(double *desenho, uint32_t valor_led, PIO pio, uint sm, double r, double g, double b);
 static void gpio_irq_handler(uint gpio, uint32_t events);
@@ -63,6 +68,9 @@ int main()
     adc_init();
     init_gpios();
     init_display();
+
+    adc_set_temp_sensor_enabled(true);
+    adc_select_input(4); // Canal do sensor de temperatura
 
     PIO pio = pio1; 
     bool ok;
@@ -88,41 +96,27 @@ int main()
 
     r=0;
     g=0;
-    b=0;
-
-    
+    b=0; 
+    cont = 0; // Contador de ciclos completos (CC) = 0
 
     while (true) { 
-        char str[10]; // Define um buffer para armazenar a string convertida
+        info_display();
         while (manual){ //============MODO MANUAL============
             adc_select_input(0);
             uint16_t vry_value = adc_read(); // Lê o valor do eixo X, de 0 a 4095.
             ledy = vry_value*25000/4095; // Converte sinal para level de PWN. Valores de -25k até 25k
+            info_display();
             if (ledy>13000 && pos_prensa<25000){ // Avanço manual de prensa
                 pwm_set_gpio_level(led_b, pos_prensa);
                 sleep_ms(100);
                 pos_prensa += stepm;
                 printf("Avanço de prensa: %d\n", pos_prensa);
-                sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
-                ssd1306_fill(&ssd, false); // Limpa o display
-                ssd1306_draw_string(&ssd, "PRENSA ", 8, 10); // Desenha uma string   
-                ssd1306_draw_string(&ssd, str  , 66, 10); // Desenha uma string
-                ssd1306_draw_string(&ssd, "MANUAL ON", 8, 20); // Desenha uma string   
-                ssd1306_draw_string(&ssd, "AUTO OFF", 8, 30); // Desenha uma string 
-                ssd1306_send_data(&ssd); // Atualiza o display 
             }
             if (ledy<11000 && pos_prensa>0){ // Recuo manual de prensa
                 pwm_set_gpio_level(led_b, pos_prensa);
                 sleep_ms(100);
                 pos_prensa -= stepm;
                 printf("Avanço de prensa: %d\n", pos_prensa);
-                sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
-                ssd1306_fill(&ssd, false); // Limpa o display
-                ssd1306_draw_string(&ssd, "PRENSA ", 8, 10); // Desenha uma string   
-                ssd1306_draw_string(&ssd, str  , 66, 10); // Desenha uma string
-                ssd1306_draw_string(&ssd, "MANUAL ON", 8, 20); // Desenha uma string
-                ssd1306_draw_string(&ssd, "AUTO OFF", 8, 30); // Desenha uma string 
-                ssd1306_send_data(&ssd); // Atualiza o display 
             }       
         }
         if (opc==0 && estado){ //============MODO AUTOMÁTICO============
@@ -131,13 +125,7 @@ int main()
                 printf("Avanço de prensa: %d\n", pos_prensa);
                 sleep_ms(100);
                 pos_prensa += step;
-                sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
-                ssd1306_fill(&ssd, false); // Limpa o display
-                ssd1306_draw_string(&ssd, "PRENSA ", 8, 10); // Desenha uma string   
-                ssd1306_draw_string(&ssd, str, 66, 10); // Desenha uma string
-                ssd1306_draw_string(&ssd, "MANUAL OFF", 8, 20); // Desenha uma string
-                ssd1306_draw_string(&ssd, "AUTO ON", 8, 30); // Desenha uma string 
-                ssd1306_send_data(&ssd); // Atualiza o display  
+                info_display();
             }
             printf("Avanço de prensa: %d\n", pos_prensa);
             opc=1;
@@ -154,6 +142,7 @@ int main()
             padrao(nums[1], valor_led, pio, sm, r, g, b);
             opc=2;
             sensorFC = !sensorFC;
+            cont++;
         }
         if (opc==2 && estado){ // Recuo automático de prensa
             while (estado && pos_prensa>0) {
@@ -161,13 +150,7 @@ int main()
                 printf("Avanço de prensa: %d\n", pos_prensa);
                 sleep_ms(100);
                 pos_prensa -= step;
-                sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
-                ssd1306_fill(&ssd, false); // Limpa o display
-                ssd1306_draw_string(&ssd, "PRENSA ", 8, 10); // Desenha uma string   
-                ssd1306_draw_string(&ssd, str, 66, 10); // Desenha uma string
-                ssd1306_draw_string(&ssd, "MANUAL OFF", 8, 20); // Desenha uma string
-                ssd1306_draw_string(&ssd, "AUTO ON", 8, 30); // Desenha uma string 
-                ssd1306_send_data(&ssd); // Atualiza o display
+                info_display(); 
             }
             printf("Avanço de prensa: %d\n", pos_prensa);
             pwm_set_gpio_level(led_b, 0);
@@ -193,25 +176,13 @@ int main()
                 sleep_ms(100);
                 pos_prensa -= step;
                 sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
-                ssd1306_fill(&ssd, false); // Limpa o display
-                ssd1306_draw_string(&ssd, "PRENSA ", 8, 10); // Desenha uma string   
-                ssd1306_draw_string(&ssd, str, 66, 10); // Desenha uma string
-                ssd1306_draw_string(&ssd, "MANUAL OFF", 8, 20); // Desenha uma string
-                ssd1306_draw_string(&ssd, "AUTO OFF", 8, 30); // Desenha uma string 
-                ssd1306_send_data(&ssd); // Atualiza o display 
+                info_display(); 
             }
             pos_prensa=0;
             printf("Recuo de prensa: %d\n", pos_prensa);
             pwm_set_gpio_level(led_b, pos_prensa);
             opc=0;
         }
-        sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
-        ssd1306_fill(&ssd, false); // Limpa o display
-        ssd1306_draw_string(&ssd, "PRENSA ", 8, 10); // Desenha uma string   
-        ssd1306_draw_string(&ssd, str, 66, 10); // Desenha uma string
-        ssd1306_draw_string(&ssd, "MANUAL OFF", 8, 20); // Desenha uma string
-        ssd1306_draw_string(&ssd, "AUTO OFF", 8, 30); // Desenha uma string 
-        ssd1306_send_data(&ssd); // Atualiza o display  
     }  
 }
 //============INICIALIZAÇÃO DE GPIOS============
@@ -256,6 +227,7 @@ void padrao(double *desenho, uint32_t valor_led, PIO pio, uint sm, double r, dou
 }
 //============INTERRUPÇÃO DE BOTÕES============
 static void gpio_irq_handler(uint gpio, uint32_t events){
+    
     uint32_t tempo_interrup = to_ms_since_boot(get_absolute_time()); // Obtém o tempo atual
     if (tempo_interrup - ultima_interrup > DEBOUNCE_DELAY) { // Verifica o tempo de debounce
         ultima_interrup = tempo_interrup; // Atualiza o tempo da última interrupção
@@ -266,7 +238,7 @@ static void gpio_irq_handler(uint gpio, uint32_t events){
         if (gpio_get(btn_b)==0){
             sensorFC = !sensorFC;
         }
-        if (gpio_get(btn_j)==0){
+        if (gpio_get(btn_j)==0 && !estado){
             estado = false;
             manual = !manual;
             printf("Modo manual está %s\n", manual ? "ligado." : "desligado.");
@@ -284,4 +256,34 @@ void init_display(){
     ssd1306_config(&ssd); // Configura o display
     ssd1306_fill(&ssd, false); // Limpa o display   
     ssd1306_send_data(&ssd); // Atualiza o display
+}
+void info_display(){
+    /*uint16_t raw = adc_read();  // Lê o valor bruto do ADC (0 a 4095)
+    float voltage = raw * 3.3f / (1 << 12);  // Converte para tensão (3.3V referência, 12 bits)
+    float temperatura = 27 - (voltage - 0.706f) / 0.001721f;  // Converte para °C
+    sprintf(str1, "%.2f", temperatura);*/
+    sprintf(str, "%d", pos_prensa); // Converte o inteiro para string
+    sprintf(str2, "%d", cont); // Converte o inteiro para string
+    ssd1306_fill(&ssd, false); // Limpa o display
+    ssd1306_draw_string(&ssd, "PRENSA: ", 8, 30); // Desenha uma string   
+    ssd1306_draw_string(&ssd, str, 74, 30); // Desenha valor da prensa
+    ssd1306_draw_string(&ssd, "TEMP: " , 8, 40); // Desenha uma string
+    ssd1306_draw_string(&ssd, "99.99 C", 56, 40); // Desenha valor da temperatura
+    //ssd1306_draw_string(&ssd, str1, 56, 40); // Desenha valor da temperatura
+    ssd1306_draw_string(&ssd, "CC: " , 8, 50); // Desenha uma string
+    ssd1306_draw_string(&ssd, str2 , 40, 50); // Desenha uma string
+    if (manual)
+    {
+        ssd1306_draw_string(&ssd, "MANUAL ON", 8, 10); // Desenha uma string
+    }else{
+        ssd1306_draw_string(&ssd, "MANUAL OFF", 8, 10); // Desenha uma string
+    }
+    if (estado)
+    {
+        ssd1306_draw_string(&ssd, "AUTO ON" , 8, 20); // Desenha uma string
+    }else{
+        ssd1306_draw_string(&ssd, "AUTO OFF" , 8, 20); // Desenha uma string
+    }
+    ssd1306_send_data(&ssd); // Atualiza o display
+    
 }
