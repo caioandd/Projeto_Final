@@ -18,14 +18,11 @@
 #define DEBOUNCE_DELAY 500 // Debounce para acionamento de botões
 volatile int ultima_interrup = 0; // Para armazenar o último tempo de interrupção
 //============SAIDAS============
-#define led_g 11 // LED verde
 #define led_b 12 // LED azul
 #define led_r 13 // LED vermelho
 #define buzzer 21 // Buzzer
 //============ADC============
-#define VRX_PIN 27 // GPIO DE EIXO Y 
-#define VRY_PIN 26 // GPIO DE EIXO X
-float ledx; // ADC para PWM
+#define VRY_PIN 26 // GPIO DE EIXO Y
 float ledy; // ADC para PWM
 //============PWM============
 #define WRAP_PERIOD 24999 // Valor do WRAP
@@ -69,8 +66,8 @@ int main()
     init_gpios();
     init_display();
 
-    adc_set_temp_sensor_enabled(true);
-    adc_select_input(4); // Canal do sensor de temperatura
+    //adc_set_temp_sensor_enabled(true);
+    //adc_select_input(4); // Canal do sensor de temperatura
 
     PIO pio = pio1; 
     bool ok;
@@ -191,17 +188,14 @@ void init_gpios(){
     gpio_init(btn_b);
     gpio_init(btn_j);
     gpio_init(led_b);
-    gpio_init(led_g);
     gpio_init(led_r);
     gpio_init(buzzer);
-    adc_gpio_init(VRX_PIN);
     adc_gpio_init(VRY_PIN);
 
     gpio_set_dir(btn_a, GPIO_IN);
     gpio_set_dir(btn_b, GPIO_IN);
     gpio_set_dir(btn_j, GPIO_IN);
     gpio_set_dir(led_b, GPIO_OUT);
-    gpio_set_dir(led_g, GPIO_OUT);
     gpio_set_dir(led_r, GPIO_OUT);
     gpio_set_dir(buzzer, GPIO_OUT);
 
